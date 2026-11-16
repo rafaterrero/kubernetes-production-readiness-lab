@@ -1,0 +1,56 @@
+name: Kubernetes Readiness Lab CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke-test:
+    name: Kind smoke test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create Kind cluster
+        uses: helm/kind-action@v1
+        with:
+          version: v0.33.0
+          node_image: kindest/node:v1.37.0
+          kubectl_version: v1.37.2
+          cluster_name: readiness-lab
+          wait: 180s
+
+      - name: Verify Kubernetes context
+        run: |
+          kubectl config current-context
+          test "$(kubectl config current-context)" = \
+            "kind-readiness-lab"
+
+      - name: Deploy application
+        run: |
+          kubectl apply -f manifests/readiness-lab.yaml
+
+          kubectl -n readiness-lab rollout status \
+            deployment/readiness-demo \
+            --timeout=240s
+
+      - name: Verify application and endpoints
+        run: ./scripts/verify.sh
+
+      - name: Collect diagnostics on failure
+        if: failure()
+        run: |
+          kubectl get nodes || true
+          kubectl -n readiness-lab get pods -o wide || true
+          kubectl -n readiness-lab describe \
+            deployment readiness-demo || true
+          kubectl -n readiness-lab get events \
+            --sort-by=.metadata.creationTimestamp || true
