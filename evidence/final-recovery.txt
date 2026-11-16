@@ -1,0 +1,19 @@
+=== Kubernetes version ===
+Client Version: v1.37.2
+Kustomize Version: v5.8.1
+Server Version: v1.37.0
+=== Context ===
+kind-readiness-lab
+=== Rollout ===
+deployment "readiness-demo" successfully rolled out
+=== Deployment ===
+NAME             READY   UP-TO-DATE   AVAILABLE   AGE
+readiness-demo   1/1     1            1           43m
+=== Pods ===
+NAME                              READY   STATUS    RESTARTS        AGE
+readiness-demo-6b9f5b684b-44hnp   1/1     Running   1 (2m47s ago)   43m
+=== Deployment conditions ===
+Progressing = True | NewReplicaSetAvailable
+Available = True | MinimumReplicasAvailable
+=== EndpointSlices ===
+readiness-demo-6b9f5b684b-44hnp ready=true

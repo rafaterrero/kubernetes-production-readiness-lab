@@ -1,0 +1,25 @@
+# Kubernetes configuration and credentials
+.kube/
+kubeconfig
+kubeconfig.*
+*.kubeconfig
+*.key
+*.pem
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+secrets/
+*.secret
+
+# Local binaries
+kubectl
+kind
+
+# Temporary files
+*.log
+*.tmp
+*.swp
+.DS_Store
+__pycache__/

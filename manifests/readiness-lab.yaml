@@ -1,0 +1,122 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: readiness-lab
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: probe-demo-code
+  namespace: readiness-lab
+data:
+  app.py: |
+    import os
+    from pathlib import Path
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            routes = {
+                "/startup": True,
+                "/live": not Path("/tmp/not-live").exists(),
+                "/ready": (
+                    os.getenv("READY_ON_START", "true") == "true"
+                    and not Path("/tmp/not-ready").exists()
+                ),
+                "/checkout": not Path("/tmp/checkout-down").exists(),
+            }
+
+            if self.path not in routes:
+                status = 404
+            else:
+                status = 200 if routes[self.path] else 503
+
+            self.send_response(status)
+            self.send_header("Content-Type", "text/plain")
+            self.end_headers()
+            self.wfile.write(
+                f"{self.path}: {status}\n".encode()
+            )
+
+    ThreadingHTTPServer(
+        ("0.0.0.0", 8080), Handler
+    ).serve_forever()
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: readiness-demo
+  namespace: readiness-lab
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  minReadySeconds: 5
+  progressDeadlineSeconds: 90
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: readiness-demo
+  template:
+    metadata:
+      labels:
+        app: readiness-demo
+    spec:
+      containers:
+        - name: web
+          image: python:3.12-alpine
+          command:
+            - python
+            - -u
+            - /app/app.py
+          env:
+            - name: READY_ON_START
+              value: "true"
+          ports:
+            - name: http
+              containerPort: 8080
+          volumeMounts:
+            - name: code
+              mountPath: /app
+              readOnly: true
+          startupProbe:
+            httpGet:
+              path: /startup
+              port: http
+            periodSeconds: 2
+            timeoutSeconds: 2
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            periodSeconds: 3
+            timeoutSeconds: 2
+            failureThreshold: 1
+          livenessProbe:
+            httpGet:
+              path: /live
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+      volumes:
+        - name: code
+          configMap:
+            name: probe-demo-code
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: readiness-demo
+  namespace: readiness-lab
+spec:
+  selector:
+    app: readiness-demo
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
