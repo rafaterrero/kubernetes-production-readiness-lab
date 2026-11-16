@@ -1,5 +1,7 @@
 # Kubernetes Production Readiness Lab
 
+[![Kubernetes Readiness Lab CI](https://github.com/rafaterrero/kubernetes-production-readiness-lab/actions/workflows/kind-smoke.yml/badge.svg)](https://github.com/rafaterrero/kubernetes-production-readiness-lab/actions/workflows/kind-smoke.yml)
+
 A reproducible, hands-on Kubernetes lab demonstrating why
 a successful Deployment does not necessarily mean an
 application is production-ready.
